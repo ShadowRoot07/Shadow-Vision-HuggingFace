@@ -9,7 +9,7 @@ def generate_technical_report(tags):
         return "Error: Token de Hugging Face no configurado."
 
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    api_url = f"https://api-inference.huggingface.co/models/{TEXT_MODEL}"
+    api_url = f"https://router.huggingface.co/hf-inference/models/{TEXT_MODEL}"
     
     # Extraemos solo el nombre de la etiqueta con mayor probabilidad
     main_tag = tags[0]['label'] if isinstance(tags, list) and len(tags) > 0 else "Unknown Object"

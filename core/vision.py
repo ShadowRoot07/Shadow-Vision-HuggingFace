@@ -9,7 +9,7 @@ def classify_image(image_path):
         return "Error: No se encontró el HF_TOKEN. Configura tus Secrets o el .env."
 
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    api_url = f"https://api-inference.huggingface.co/models/{VISION_MODEL}"
+    api_url = f"https://router.huggingface.co/hf-inference/models/{VISION_MODEL}"
 
     with open(image_path, "rb") as f:
         data = f.read()
