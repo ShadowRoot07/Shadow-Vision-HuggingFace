@@ -6,27 +6,27 @@ def generate_technical_report(detected_object):
     if not HF_TOKEN:
         return "Error: No se encontró el HF_TOKEN."
 
-    # Limpieza del ID del modelo
     model_id = TEXT_MODEL.strip().replace('"', '').replace("'", "")
     client = InferenceClient(model=model_id, token=HF_TOKEN)
     
-    # Prompt simple y directo
-    prompt = f"Resume brevemente el hallazgo de este objeto: {detected_object}. Sé técnico."
+    prompt = f"System: Eres un dron de vigilancia. Resume el hallazgo: {detected_object}."
 
     try:
-        # Usamos la tarea de generación de texto estándar
-        # Añadimos un timeout para evitar que se quede colgado
+        # Usamos un bloque try más agresivo para ver qué llega exactamente
         output = client.text_generation(
             prompt, 
-            max_new_tokens=50,
-            temperature=0.7
+            max_new_tokens=40,
+            temperature=0.5
         )
-        return output if output else "El modelo devolvió un informe vacío."
+        
+        # Si la salida es una lista (formato antiguo de la API), sacamos el texto
+        if isinstance(output, list) and len(output) > 0:
+            return output[0].get('generated_text', 'Lista vacía')
+        
+        # Si es un string, lo devolvemos
+        return output if output else "Informe generado pero vacío."
 
     except Exception as e:
-        # Esto nos dirá exactamente qué está pasando
-        error_detail = str(e)
-        if "loading" in error_detail.lower():
-            return "Estado: Modelo despertando... Intenta de nuevo en 30s."
-        return f"Fallo en la Matriz: {error_detail[:100]}" # Cortamos para que no sature el log
+        # Forzamos que el error se convierta a string con repr() para ver el tipo de error
+        return f"Fallo en la Matriz: {repr(e)}"
 
