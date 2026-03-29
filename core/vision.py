@@ -4,36 +4,36 @@ from utils.config import HF_TOKEN, VISION_MODEL
 
 def classify_image(image_path):
     if not HF_TOKEN:
-        return "Error: No se encontró el HF_TOKEN."
+        return "Error: No se encontró el HF_TOKEN en las variables de entorno."
 
-    model_id = VISION_MODEL.strip()
+    model_id = VISION_MODEL.strip().replace('"', '').replace("'", "")
     
-    # Usamos el cliente oficial que gestiona la lógica de rutas interna de HF
+    # Inicializamos el cliente
     client = InferenceClient(model=model_id, token=HF_TOKEN)
 
-    print(f"DEBUG: Escaneando con InferenceClient: {image_path}")
-    print(f"DEBUG: Modelo objetivo: {model_id}")
+    print(f"--- Shadow-Vision Debug ---")
+    print(f"Modelo: {model_id}")
+    print(f"Procesando: {image_path}")
 
     try:
-        with open(image_path, "rb") as f:
-            image_data = f.read()
-        
-        # El cliente detecta que es una tarea de clasificación por el modelo
-        # Intentará contactar con el endpoint correcto automáticamente
-        response = client.image_classification(image_data)
+        # IMPORTANTE: Pasamos la RUTA (image_path) en lugar de los bytes leídos.
+        # Esto permite que InferenceClient detecte el mime-type (image/jpeg) por sí solo.
+        response = client.image_classification(image_path)
         
         return response
             
     except Exception as e:
-        error_msg = str(e)
-        # Si el modelo está cargando, a veces el cliente lanza una excepción con el tiempo
-        if "currently loading" in error_msg.lower():
-            print("DEBUG: Modelo cargando, esperando 20 segundos para reintentar...")
+        error_str = str(e)
+        
+        # Manejo de Cold Start (Modelo cargando)
+        if "loading" in error_str.lower():
+            print("AVISO: El modelo se está despertando en los servidores de HF. Esperando 20s...")
             time.sleep(20)
             try:
-                return client.image_classification(image_data)
+                # Reintentamos usando la ruta
+                return client.image_classification(image_path)
             except Exception as e2:
-                return f"Error tras reintento: {str(e2)}"
+                return f"Error tras reintento de carga: {str(e2)}"
         
-        return f"Error crítico: {error_msg}"
+        return f"Error crítico: {error_str}"
 
