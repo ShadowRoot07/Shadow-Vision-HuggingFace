@@ -27,7 +27,7 @@ jobs:
       env:
         # Aquí mapeamos los Secrets de GitHub a variables de entorno del sistema
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        VISION_MODEL: ${{ vars.VISION_MODEL }}
+        VISION_MODEL: ${{ secrets.VISION_MODEL }}
         TEXT_MODEL: ${{ secrets.TEXT_MODEL }}
       run: python main.py
 

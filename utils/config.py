@@ -9,7 +9,7 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 # Configuración de Modelos de Hugging Face
 # Usaremos Vision Transformer (ViT) para clasificar lo que ve el ojo del Guardian
-VISION_MODEL = os.getenv("VISION_MODEL", "google/vit-base-patch16-224")
+VISION_MODEL = os.getenv("VISION_MODEL") or "google/vit-base-patch16-224"
 HF_TOKEN = os.getenv("HF_TOKEN")
 # Usaremos GPT-2 para generar el reporte técnico basado en la visión
 TEXT_MODEL = "gpt2"
