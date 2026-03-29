@@ -6,16 +6,14 @@ def classify_image(image_path):
     if not HF_TOKEN:
         return "Error: No se encontró el HF_TOKEN."
 
-    # --- CAMBIO TEMPORAL PARA TEST ---
-    # Forzamos el ID exacto del modelo de Google para descartar errores en el Secret
-    model_id = "google/vit-base-patch16-224" 
-    # ---------------------------------
+    # Limpiamos el ID
+    model_id = VISION_MODEL.strip()
     
-    api_url = f"https://router.huggingface.co/hf-inference/v1/models/{model_id}"
+    # URL Simplificada del Router (Sin el prefijo v1/hf-inference)
+    api_url = f"https://router.huggingface.co/models/{model_id}"
     
-    print(f"DEBUG: Cargando imagen desde {image_path}")
-    print(f"DEBUG: PROBANDO MODELO FORZADO: '{model_id}'")
-    print(f"DEBUG: URL ROUTER: {api_url}")
+    print(f"DEBUG: Escaneando {image_path}")
+    print(f"DEBUG: Intentando con ROUTER URL: {api_url}")
 
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
@@ -31,8 +29,13 @@ def classify_image(image_path):
         if response.status_code == 200:
             return response.json()
         
-        # Si da 404 aquí, el problema es que el Router requiere un formato distinto para este modelo
-        return f"Error en el Router: {response.status_code} - {response.text}"
+        # Esto es CLAVE: Si falla, queremos ver el cuerpo del error detallado
+        try:
+            error_detail = response.json()
+        except:
+            error_detail = response.text
+
+        return f"Error {response.status_code} - Detalle: {error_detail}"
             
     except Exception as e:
         return f"Error crítico: {str(e)}"
