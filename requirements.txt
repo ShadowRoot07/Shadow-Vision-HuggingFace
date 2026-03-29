@@ -1,6 +1,5 @@
-torch
-transformers
-pillow
 requests
 python-dotenv
+huggingface_hub
+pillow
 

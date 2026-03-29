@@ -1,7 +1,5 @@
-import requests
 import time
-from urllib3.util.retry import Retry
-from requests.adapters import HTTPAdapter
+from huggingface_hub import InferenceClient
 from utils.config import HF_TOKEN, VISION_MODEL
 
 def classify_image(image_path):
@@ -10,51 +8,32 @@ def classify_image(image_path):
 
     model_id = VISION_MODEL.strip()
     
-    # URL DEFINITIVA SEGÚN EL NUEVO PROTOCOLO DEL ROUTER
-    # El Router actúa como pasarela hacia el v1
-    api_url = f"https://router.huggingface.co/hf-inference/v1/models/{model_id}"
-    
-    session = requests.Session()
-    retries = Retry(
-        total=5,
-        backoff_factor=2,
-        status_forcelist=[500, 502, 503, 504]
-    )
-    session.mount('https://', HTTPAdapter(max_retries=retries))
+    # Usamos el cliente oficial que gestiona la lógica de rutas interna de HF
+    client = InferenceClient(model=model_id, token=HF_TOKEN)
 
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/octet-stream" # Importante para enviar binarios al Router
-    }
+    print(f"DEBUG: Escaneando con InferenceClient: {image_path}")
+    print(f"DEBUG: Modelo objetivo: {model_id}")
 
     try:
         with open(image_path, "rb") as f:
             image_data = f.read()
         
-        print(f"DEBUG: Enviando {len(image_data)} bytes a través del Router...")
+        # El cliente detecta que es una tarea de clasificación por el modelo
+        # Intentará contactar con el endpoint correcto automáticamente
+        response = client.image_classification(image_data)
         
-        response = session.post(api_url, headers=headers, data=image_data, timeout=60)
-
-        # Si el servidor responde con HTML (como el error 410 anterior), lo detectamos
-        if "doctype html" in response.text.lower():
-            return f"Error de Infraestructura: El Router devolvió HTML en lugar de JSON (Status: {response.status_code})"
-
-        if response.status_code == 200:
-            return response.json()
-        
-        # Manejo de modelo cargando (Cold Start)
-        try:
-            res_json = response.json()
-            if isinstance(res_json, dict) and "estimated_time" in res_json:
-                wait_time = res_json["estimated_time"]
-                print(f"DEBUG: Modelo despertando... esperando {wait_time}s")
-                time.sleep(wait_time)
-                response = session.post(api_url, headers=headers, data=image_data, timeout=60)
-                return response.json()
-            return f"Error API ({response.status_code}): {res_json}"
-        except:
-            return f"Error API ({response.status_code}): {response.text[:200]}" # Solo los primeros 200 caracteres si no es JSON
+        return response
             
     except Exception as e:
-        return f"Error crítico en la ejecución: {str(e)}"
+        error_msg = str(e)
+        # Si el modelo está cargando, a veces el cliente lanza una excepción con el tiempo
+        if "currently loading" in error_msg.lower():
+            print("DEBUG: Modelo cargando, esperando 20 segundos para reintentar...")
+            time.sleep(20)
+            try:
+                return client.image_classification(image_data)
+            except Exception as e2:
+                return f"Error tras reintento: {str(e2)}"
+        
+        return f"Error crítico: {error_msg}"
 
