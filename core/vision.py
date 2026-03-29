@@ -6,36 +6,36 @@ def classify_image(image_path):
     if not HF_TOKEN:
         return "Error: No se encontró el HF_TOKEN."
 
-    # Limpiamos el ID
     model_id = VISION_MODEL.strip()
     
-    # URL Simplificada del Router (Sin el prefijo v1/hf-inference)
-    api_url = f"https://router.huggingface.co/models/{model_id}"
+    # Probamos la URL de inferencia directa (clásica)
+    # Esta es la que suele funcionar para modelos de Image Classification
+    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
     
     print(f"DEBUG: Escaneando {image_path}")
-    print(f"DEBUG: Intentando con ROUTER URL: {api_url}")
+    print(f"DEBUG: Intentando con API URL: {api_url}")
 
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "image/jpeg"
     }
 
     try:
         with open(image_path, "rb") as f:
-            data = f.read()
+            image_data = f.read()
         
-        response = requests.post(api_url, headers=headers, data=data, timeout=30)
+        # Enviamos los bytes directamente
+        response = requests.post(api_url, headers=headers, data=image_data, timeout=30)
         
+        # Si esta URL nos devuelve 404 o 410, intentamos con la URL de respaldo del Router v1
+        if response.status_code in [404, 410]:
+            backup_url = f"https://api-inference.huggingface.co/pipeline/image-classification/{model_id}"
+            print(f"DEBUG: Reintentando con Backup URL: {backup_url}")
+            response = requests.post(backup_url, headers=headers, data=image_data, timeout=30)
+
         if response.status_code == 200:
             return response.json()
         
-        # Esto es CLAVE: Si falla, queremos ver el cuerpo del error detallado
-        try:
-            error_detail = response.json()
-        except:
-            error_detail = response.text
-
-        return f"Error {response.status_code} - Detalle: {error_detail}"
+        return f"Error {response.status_code} - MSG: {response.text}"
             
     except Exception as e:
         return f"Error crítico: {str(e)}"
