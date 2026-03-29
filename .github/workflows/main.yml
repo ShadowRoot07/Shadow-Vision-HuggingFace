@@ -3,7 +3,10 @@ name: Shadow-Vision-Guardian-Run
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   analyze:
@@ -12,6 +15,9 @@ jobs:
     steps:
     - name: Checkout del código
       uses: actions/checkout@v4
+      with:
+        # Esto asegura que el bot use el token del Action para tener permisos de push
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Configurar Python
       uses: actions/setup-python@v5
@@ -25,9 +31,26 @@ jobs:
 
     - name: Ejecutar Shadow-Vision-Assistant
       env:
-        # Aquí mapeamos los Secrets de GitHub a variables de entorno del sistema
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
         VISION_MODEL: ${{ secrets.VISION_MODEL }}
         TEXT_MODEL: ${{ secrets.TEXT_MODEL }}
       run: python main.py
+
+    - name: Commit and Push Report
+      run: |
+        # Configuramos la identidad del bot
+        git config --global user.name "Shadow-Vision-Bot"
+        git config --global user.email "bot@shadowroot.tech"
+        
+        # Verificamos si hay archivos nuevos en la carpeta de reportes
+        # El '|| true' evita que el Action falle si no hay cambios
+        git add data/reports/*.json || true
+        
+        # Commit solo si hay cambios reales para evitar errores de 'nothing to commit'
+        if git diff --cached --quiet; then
+          echo "No se detectaron nuevos reportes para subir."
+        else
+          git commit -m "Guardian: Nuevo hallazgo detectado [$(date +'%Y-%m-%d %H:%M')]"
+          git push origin main
+        fi
 
