@@ -9,7 +9,6 @@ venv/
 env/
 
 # Datos y Modelos (No subir imágenes de prueba pesadas o modelos locales)
-data/inputs/*
 !data/inputs/.gitkeep
 models/*.pt
 models/*.pth
