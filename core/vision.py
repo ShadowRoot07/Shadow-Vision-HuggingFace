@@ -9,7 +9,10 @@ def classify_image(image_path):
         return "Error: No se encontró el HF_TOKEN."
 
     model_id = VISION_MODEL.strip()
-    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+    
+    # URL DEFINITIVA SEGÚN EL NUEVO PROTOCOLO DEL ROUTER
+    # El Router actúa como pasarela hacia el v1
+    api_url = f"https://router.huggingface.co/hf-inference/v1/models/{model_id}"
     
     session = requests.Session()
     retries = Retry(
@@ -19,36 +22,38 @@ def classify_image(image_path):
     )
     session.mount('https://', HTTPAdapter(max_retries=retries))
 
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/octet-stream" # Importante para enviar binarios al Router
+    }
 
     try:
         with open(image_path, "rb") as f:
             image_data = f.read()
         
-        print(f"DEBUG: Enviando {len(image_data)} bytes a {model_id}...")
+        print(f"DEBUG: Enviando {len(image_data)} bytes a través del Router...")
         
         response = session.post(api_url, headers=headers, data=image_data, timeout=60)
 
-        # Verificamos si la respuesta está vacía
-        if not response.text:
-            return f"Error: El servidor devolvió una respuesta vacía (Status: {response.status_code})"
+        # Si el servidor responde con HTML (como el error 410 anterior), lo detectamos
+        if "doctype html" in response.text.lower():
+            return f"Error de Infraestructura: El Router devolvió HTML en lugar de JSON (Status: {response.status_code})"
 
-        # Intentamos parsear solo si el status es 200
         if response.status_code == 200:
             return response.json()
         
-        # Si no es 200, intentamos ver si es el error de 'loading'
+        # Manejo de modelo cargando (Cold Start)
         try:
-            error_data = response.json()
-            if isinstance(error_data, dict) and "estimated_time" in error_data:
-                wait_time = error_data["estimated_time"]
+            res_json = response.json()
+            if isinstance(res_json, dict) and "estimated_time" in res_json:
+                wait_time = res_json["estimated_time"]
                 print(f"DEBUG: Modelo despertando... esperando {wait_time}s")
                 time.sleep(wait_time)
                 response = session.post(api_url, headers=headers, data=image_data, timeout=60)
                 return response.json()
-            return f"Error API ({response.status_code}): {error_data}"
+            return f"Error API ({response.status_code}): {res_json}"
         except:
-            return f"Error API ({response.status_code}): {response.text}"
+            return f"Error API ({response.status_code}): {response.text[:200]}" # Solo los primeros 200 caracteres si no es JSON
             
     except Exception as e:
         return f"Error crítico en la ejecución: {str(e)}"
