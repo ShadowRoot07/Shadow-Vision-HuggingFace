@@ -5,24 +5,28 @@ def classify_image(image_path):
     if not HF_TOKEN:
         return "Error: No se encontró el HF_TOKEN."
 
-    # URL actualizada al nuevo Router
-    api_url = f"https://api-inference.huggingface.co/models/{VISION_MODEL}"
+    # CAMBIO CRÍTICO: Nueva estructura de URL usando el Router
+    # De: https://api-inference.huggingface.co/models/...
+    # A:  https://router.huggingface.co/hf-inference/v1/models/...
     
-    # IMPORTANTE: Añadimos "Content-Type" para que la API sepa que es una imagen
+    api_url = f"https://router.huggingface.co/hf-inference/v1/models/{VISION_MODEL}"
+    
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "image/jpeg" 
+        "Content-Type": "image/jpeg"
     }
 
-    with open(image_path, "rb") as f:
-        data = f.read()
-    
-    # Usamos la API directamente (HF a veces redirige el router automáticamente)
-    response = requests.post(api_url, headers=headers, data=data)
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        # Esto nos ayudará a ver qué pasa si vuelve a fallar
-        return f"Error en la API: {response.status_code} - {response.text}"
+    try:
+        with open(image_path, "rb") as f:
+            data = f.read()
+        
+        response = requests.post(api_url, headers=headers, data=data)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return f"Error en la API: {response.status_code} - {response.text}"
+            
+    except Exception as e:
+        return f"Error inesperado: {str(e)}"
 
