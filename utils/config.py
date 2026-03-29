@@ -12,7 +12,7 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 VISION_MODEL = os.getenv("VISION_MODEL") or "google/vit-base-patch16-224"
 HF_TOKEN = os.getenv("HF_TOKEN")
 # Usaremos GPT-2 para generar el reporte técnico basado en la visión
-TEXT_MODEL = "gpt2"
+TEXT_MODEL = os.getenv("TEXT_MODEL") or "HuggingFaceH4/zephyr-7b-beta"
 
 # Rutas de archivos
 INPUT_DIR = "data/inputs"
